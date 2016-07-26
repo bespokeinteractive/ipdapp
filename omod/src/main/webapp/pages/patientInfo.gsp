@@ -447,7 +447,7 @@
 
                     jq.getJSON('${ ui.actionLink("ipdapp", "PatientInfo", "treatment") }',treatmentFormData)
                             .success(function(data) {
-                                jq().toastmessage('showNoticeToast', "Patient has been transferred");
+                                jq().toastmessage('showNoticeToast', "Patient has been treated");
                             })
                             .error(function(xhr, status, err) {
                                 jq().toastmessage('showErrorToast', "Error:" + err);

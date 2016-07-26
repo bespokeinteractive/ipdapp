@@ -151,7 +151,7 @@ public class PatientInfoFragmentController {
                                   @RequestParam(value ="selectedDischargeProcedureList[]", required = false) Integer[] selectedDischargeProcedureList,
                                   @RequestParam(value ="dischargeOutcomes", required = false) Integer dischargeOutcomes,
                                   @RequestParam(value ="otherDischargeInstructions", required = false) String otherDischargeInstructions
-    ){
+    ) {
 
         HospitalCoreService hospitalCoreService = (HospitalCoreService) Context.getService(HospitalCoreService.class);
         PatientQueueService queueService = Context.getService(PatientQueueService.class);
@@ -164,7 +164,7 @@ public class PatientInfoFragmentController {
             ConceptService conceptService = Context.getConceptService();
             Concept causeOfDeath = conceptService.getConceptByName("NONE");
             hospitalCoreService.savePatientSearch(patientSearch);
-            PatientService ps=Context.getPatientService();
+            PatientService ps = Context.getPatientService();
             Patient patient = ps.getPatient(patientId);
             patient.setDead(true);
             patient.setDeathDate(new Date());
@@ -173,8 +173,7 @@ public class PatientInfoFragmentController {
             patientSearch.setDead(true);
             patientSearch.setAdmitted(false);
             hospitalCoreService.savePatientSearch(patientSearch);
-        }
-        else{
+        } else {
             patientSearch.setAdmitted(false);
             hospitalCoreService.savePatientSearch(patientSearch);
         }
@@ -188,101 +187,101 @@ public class PatientInfoFragmentController {
         Concept cDiagnosis = conceptService.getConceptByName(gpDiagnosis.getPropertyValue());
         Concept cProcedure = conceptService.getConceptByName(procedure.getPropertyValue());
         IpdPatientAdmitted admitted = ipdService.getIpdPatientAdmitted(dischargeAdmittedID);
-        Encounter ipdEncounter = admitted.getPatientAdmissionLog().getIpdEncounter();
-        List<Obs> listObsOfIpdEncounter = new ArrayList<Obs>(ipdEncounter.getAllObs());
-        Location location = new Location(1);
+        if (admitted != null) {
+            Encounter ipdEncounter = admitted.getPatientAdmissionLog().getIpdEncounter();
+            List<Obs> listObsOfIpdEncounter = new ArrayList<Obs>(ipdEncounter.getAllObs());
+            Location location = new Location(1);
+            User user = Context.getAuthenticatedUser();
+            Date date = new Date();
+            //diagnosis
 
-        User user = Context.getAuthenticatedUser();
-        Date date = new Date();
-        //diagnosis
+            Set<Obs> obses = new HashSet(ipdEncounter.getAllObs());
 
-        Set<Obs> obses = new HashSet(ipdEncounter.getAllObs());
+            ipdEncounter.setObs(null);
 
-        ipdEncounter.setObs(null);
+            List<Concept> listConceptDianosisOfIpdEncounter = new ArrayList<Concept>();
+            List<Concept> listConceptProcedureOfIpdEncounter = new ArrayList<Concept>();
+            if (CollectionUtils.isNotEmpty(listObsOfIpdEncounter)) {
+                for (Obs obx : obses) {
+                    if (obx.getConcept().getConceptId().equals(cDiagnosis.getConceptId())) {
+                        listConceptDianosisOfIpdEncounter.add(obx.getValueCoded());
+                    }
 
-        List<Concept> listConceptDianosisOfIpdEncounter = new ArrayList<Concept>();
-        List<Concept> listConceptProcedureOfIpdEncounter = new ArrayList<Concept>();
-        if (CollectionUtils.isNotEmpty(listObsOfIpdEncounter)) {
-            for (Obs obx : obses) {
-                if (obx.getConcept().getConceptId().equals(cDiagnosis.getConceptId())) {
-                    listConceptDianosisOfIpdEncounter.add(obx.getValueCoded());
+                    if (obx.getConcept().getConceptId().equals(cProcedure.getConceptId())) {
+                        listConceptProcedureOfIpdEncounter.add(obx.getValueCoded());
+                    }
+                }
+            }
+
+            List<Concept> listConceptDiagnosis = new ArrayList<Concept>();
+
+            if (selectedDiagnosisList != null) {
+                for (Integer cId : selectedDiagnosisList) {
+                    Concept cons = conceptService.getConcept(cId);
+                    listConceptDiagnosis.add(cons);
+                    //if (!listConceptDianosisOfIpdEncounter.contains(cons)) {
+                    Obs obsDiagnosis = new Obs();
+                    //obsDiagnosis.setObsGroup(obsGroup);
+                    obsDiagnosis.setConcept(cDiagnosis);
+                    obsDiagnosis.setValueCoded(cons);
+                    obsDiagnosis.setCreator(user);
+                    obsDiagnosis.setObsDatetime(date);
+                    obsDiagnosis.setLocation(location);
+                    obsDiagnosis.setDateCreated(date);
+                    obsDiagnosis.setPerson(ipdEncounter.getPatient());
+                    obsDiagnosis.setEncounter(ipdEncounter);
+                    obsDiagnosis = Context.getObsService().saveObs(obsDiagnosis, "update obs diagnosis if need");
+                    obses.add(obsDiagnosis);
+                    //}
+                }
+            }
+            List<Concept> listConceptProcedure = new ArrayList<Concept>();
+            if (!ArrayUtils.isEmpty(selectedDischargeProcedureList)) {
+
+                if (cProcedure == null) {
+                    try {
+                        throw new Exception("Post for procedure concept null");
+                    } catch (Exception e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+                for (Integer pId : selectedDischargeProcedureList) {
+                    Concept cons = conceptService.getConcept(pId);
+                    listConceptProcedure.add(cons);
+                    //if (!listConceptProcedureOfIpdEncounter.contains(cons)) {
+                    Obs obsProcedure = new Obs();
+                    //obsDiagnosis.setObsGroup(obsGroup);
+                    obsProcedure.setConcept(cProcedure);
+                    obsProcedure.setValueCoded(conceptService.getConcept(pId));
+                    obsProcedure.setCreator(user);
+                    obsProcedure.setObsDatetime(date);
+                    obsProcedure.setLocation(location);
+                    obsProcedure.setPerson(ipdEncounter.getPatient());
+                    obsProcedure.setDateCreated(date);
+                    obsProcedure.setEncounter(ipdEncounter);
+                    obsProcedure = Context.getObsService().saveObs(obsProcedure, "update obs diagnosis if need");
+                    //ipdEncounter.addObs(obsProcedure);
+                    obses.add(obsProcedure);
+                    //}
                 }
 
-                if (obx.getConcept().getConceptId().equals( cProcedure.getConceptId())) {
-                    listConceptProcedureOfIpdEncounter.add(obx.getValueCoded());
-                }
+            }
+            ipdEncounter.setObs(obses);
+            Context.getEncounterService().saveEncounter(ipdEncounter);
+            IpdPatientAdmittedLog ipdPatientAdmittedLog = ipdService.discharge(dischargeAdmittedID, dischargeOutcomes, otherDischargeInstructions);
+            OpdPatientQueueLog opdPatientQueueLog = ipdPatientAdmittedLog.getPatientAdmissionLog().getOpdLog();
+            opdPatientQueueLog.setVisitOutCome("DISCHARGE ON REQUEST");
+            queueService.saveOpdPatientQueueLog(opdPatientQueueLog);
+            Encounter encounter = ipdPatientAdmittedLog.getPatientAdmissionLog().getIpdEncounter();
+            BillingService billingService = (BillingService) Context.getService(BillingService.class);
+            PatientServiceBill patientServiceBill = billingService.getPatientServiceBillByEncounter(encounter);
+            if (patientServiceBill != null) {
+                patientServiceBill.setDischargeStatus(1);
+                billingService.savePatientServiceBill(patientServiceBill);
+
             }
         }
-
-        List<Concept> listConceptDiagnosis = new ArrayList<Concept>();
-
-        if(selectedDiagnosisList!=null){
-            for (Integer cId : selectedDiagnosisList) {
-                Concept cons = conceptService.getConcept(cId);
-                listConceptDiagnosis.add(cons);
-                //if (!listConceptDianosisOfIpdEncounter.contains(cons)) {
-                Obs obsDiagnosis = new Obs();
-                //obsDiagnosis.setObsGroup(obsGroup);
-                obsDiagnosis.setConcept(cDiagnosis);
-                obsDiagnosis.setValueCoded(cons);
-                obsDiagnosis.setCreator(user);
-                obsDiagnosis.setObsDatetime(date);
-                obsDiagnosis.setLocation(location);
-                obsDiagnosis.setDateCreated(date);
-                obsDiagnosis.setPatient(ipdEncounter.getPatient());
-                obsDiagnosis.setEncounter(ipdEncounter);
-                obsDiagnosis = Context.getObsService().saveObs(obsDiagnosis, "update obs diagnosis if need");
-                obses.add(obsDiagnosis);
-                //}
-            }
-        }
-        List<Concept> listConceptProcedure = new ArrayList<Concept>();
-        if (!ArrayUtils.isEmpty(selectedDischargeProcedureList)) {
-
-            if (cProcedure == null) {
-                try {
-                    throw new Exception("Post for procedure concept null");
-                }
-                catch (Exception e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
-            for (Integer pId : selectedDischargeProcedureList) {
-                Concept cons = conceptService.getConcept(pId);
-                listConceptProcedure.add(cons);
-                //if (!listConceptProcedureOfIpdEncounter.contains(cons)) {
-                Obs obsProcedure = new Obs();
-                //obsDiagnosis.setObsGroup(obsGroup);
-                obsProcedure.setConcept(cProcedure);
-                obsProcedure.setValueCoded(conceptService.getConcept(pId));
-                obsProcedure.setCreator(user);
-                obsProcedure.setObsDatetime(date);
-                obsProcedure.setLocation(location);
-                obsProcedure.setPatient(ipdEncounter.getPatient());
-                obsProcedure.setDateCreated(date);
-                obsProcedure.setEncounter(ipdEncounter);
-                obsProcedure = Context.getObsService().saveObs(obsProcedure, "update obs diagnosis if need");
-                //ipdEncounter.addObs(obsProcedure);
-                obses.add(obsProcedure);
-                //}
-            }
-
-        }
-        ipdEncounter.setObs(obses);
-
-        Context.getEncounterService().saveEncounter(ipdEncounter);
-
-
-        IpdPatientAdmittedLog ipdPatientAdmittedLog=ipdService.discharge(dischargeAdmittedID, dischargeOutcomes, otherDischargeInstructions );
-        OpdPatientQueueLog opdPatientQueueLog=ipdPatientAdmittedLog.getPatientAdmissionLog().getOpdLog();
-        opdPatientQueueLog.setVisitOutCome("DISCHARGE ON REQUEST");
-        queueService.saveOpdPatientQueueLog(opdPatientQueueLog);
-        Encounter encounter=ipdPatientAdmittedLog.getPatientAdmissionLog().getIpdEncounter();
-        BillingService billingService = (BillingService) Context.getService(BillingService.class);
-        PatientServiceBill patientServiceBill=billingService.getPatientServiceBillByEncounter(encounter);
-        patientServiceBill.setDischargeStatus(1);
-        billingService.savePatientServiceBill(patientServiceBill);
 
     }
     //method to convert drugs
